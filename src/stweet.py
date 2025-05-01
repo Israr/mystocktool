@@ -1,5 +1,5 @@
 #! /home/ikhan/anaconda3/bin/python
-
+import os
 import typer
 from langchain_openai import  AzureChatOpenAI
 import requests
@@ -14,6 +14,40 @@ load_dotenv()
 
 app = typer.Typer()
 
+def post_process(response):
+    result = response.content
+    result = result.replace("AI:", "")
+    result = result.replace("System:", "")
+    return result
+
+def ai_respone(llm_q):
+    model = os.getenv("DEFAULT_MODEL")
+    if model == "default":
+        print("Using default model")
+        model = os.getenv("AZURE_CHAT_MODEL")
+        llm = AzureChatOpenAI(model_name=model, deployment_name=model)
+        result = post_process(llm.invoke(llm_q))
+    elif model == "mistral":
+        print("Using Mistral model")
+        from mistralai import Mistral
+        api_key = os.environ["MISTRAL_API_KEY"]
+        model = "mistral-large-latest"
+        client = Mistral(api_key=api_key)
+        chat_response = client.chat.complete(
+            model= model,
+            messages = [
+                {
+                    "role": "user",
+                    "content": llm_q
+                },
+            ])
+        result = chat_response.choices[0].message.content
+    else:
+        print("Invalid model")
+        return
+    return result
+
+
 def fetch_messages(symbol):
     url = f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"}
@@ -26,12 +60,6 @@ def create_ctx_from_messages(messages):
     for m in messages:
         context += f"{m['user']['username']}: {m['body']}\n\n"
     return context
-
-def post_process(response):
-    result = response.content
-    result = result.replace("AI:", "")
-    result = result.replace("System:", "")
-    return result
 
 @app.command("recommend", help="Ask AI to provide recommendation on a stock symbol")
 def recommend(symbol):
@@ -52,7 +80,7 @@ You can provide a recommendation to Buy, Sell, or Neutral. If you don't know the
     context = create_ctx_from_messages(messages)
     prompt_template = ChatPromptTemplate.from_messages(msgs)
     llm_q = prompt_template.format(context=context, question=question)
-    result = post_process(llm.invoke(llm_q))
+    result = ai_respone(llm_q)
     print(result)
 
 @app.command("ai", help="Ask AI to provide summary about a stock symbol")
@@ -77,23 +105,23 @@ For longer answers, You should use bullet points in your answer for readability.
     context = create_ctx_from_messages(messages)
     prompt_template = ChatPromptTemplate.from_messages(msgs)
     llm_q = prompt_template.format(context=context, question=question)
-    result = post_process(llm.invoke(llm_q))
+    result = ai_respone(llm_q)
     print(result)
     
-@app.command("aiq", help="ask a question to the AI")
+@app.command("aiq")
 def aiq(question):
     system_template = """You are a helpful AI assistant. You are asked a question and you provide a helpful and informative answer. """
     msgs = [
         SystemMessagePromptTemplate.from_template(system_template),
         HumanMessagePromptTemplate.from_template("{question}"),
     ]
-    # model = 'gpt-35-turbo'
-    model = 'gpt-40-08-06'
+    model = os.getenv("AZURE_CHAT_MODEL")
     llm = AzureChatOpenAI(model_name=model, deployment_name=model)
     prompt_template = ChatPromptTemplate.from_messages(msgs)
     llm_q = prompt_template.format(question=question)
-    result = post_process(llm.invoke(llm_q))
+    result = ai_respone(llm_q)
     print(result)
+
 
 @app.command("fetch", help="fetch tweets from stocktwits for a given symbol")
 def fetch(symbol):
