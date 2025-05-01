@@ -73,9 +73,6 @@ You can provide a recommendation to Buy, Sell, or Neutral. If you don't know the
         SystemMessagePromptTemplate.from_template(system_template),
         HumanMessagePromptTemplate.from_template("{question}"),
     ]
-    # model = 'gpt-35-turbo'
-    model = 'gpt-40-08-06'
-    llm = AzureChatOpenAI(model_name=model, deployment_name=model)
     messages = fetch_messages(symbol)
     context = create_ctx_from_messages(messages)
     prompt_template = ChatPromptTemplate.from_messages(msgs)
@@ -98,9 +95,6 @@ For longer answers, You should use bullet points in your answer for readability.
         SystemMessagePromptTemplate.from_template(system_template),
         HumanMessagePromptTemplate.from_template("{question}"),
     ]
-    # model = 'gpt-35-turbo'
-    model = 'gpt-40-08-06'
-    llm = AzureChatOpenAI(model_name=model, deployment_name=model)
     messages = fetch_messages(symbol)
     context = create_ctx_from_messages(messages)
     prompt_template = ChatPromptTemplate.from_messages(msgs)
@@ -115,8 +109,6 @@ def aiq(question):
         SystemMessagePromptTemplate.from_template(system_template),
         HumanMessagePromptTemplate.from_template("{question}"),
     ]
-    model = os.getenv("AZURE_CHAT_MODEL")
-    llm = AzureChatOpenAI(model_name=model, deployment_name=model)
     prompt_template = ChatPromptTemplate.from_messages(msgs)
     llm_q = prompt_template.format(question=question)
     result = ai_respone(llm_q)
